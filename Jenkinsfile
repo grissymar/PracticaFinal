@@ -31,7 +31,7 @@ pipeline {
         stage('Deploy to GKE') {
             steps{
 			  script{
-			    kubernetesDeploy(configs:deployment.yaml", kubeconfigId: mi-primer-jenkins-290214, verifyDeployments: true])
+			    kubernetesDeploy(configs:"deployment.yaml", kubeconfigId: "mi-primer-jenkins-290214")
                 }
             }
         }
