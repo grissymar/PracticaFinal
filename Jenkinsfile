@@ -30,11 +30,15 @@ pipeline {
                 }
             }
         }        
-        stage('Deploy to GKE') {
-            steps{
-                sh "sed -i 's/hello:latest/hello:${env.hello-world}/g' deployment.yaml"
-                step([$class: 'KubernetesEngineBuilder', projectId: env.mi-primer-jenkins-290214, clusterName: env.kube-demo, location: env.us-central1-c, manifestPattern: 'deployment.yaml', credentialsId: env.mi-primer-jenkins-290214, verifyDeployments: true])
-            }
-        }
-    }    
+        stage('Deploy to Kubernetes') {
+            steps {
+              echo "Deploying to Kubernetes Cluster.."
+              sh 'ls -ltr'
+              sh 'pwd'
+              sh "sed -i 's/tagversion/${env.BUILD_ID}/g' deployment.yaml"
+              step([$class: 'KubernetesEngineBuilder', projectId: env.PROJECT_ID, clusterName: env.CLUSTER_NAME, location: env.LOCATION, manifestPattern: 'deployment.yaml', credentialsId: env.CREDENTIALS_ID, verifyDeployments: true])
+              echo "Deployment to Kubernetes cluster completed.."
+      }
+     }
+    }
 }
