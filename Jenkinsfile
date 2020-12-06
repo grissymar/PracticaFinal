@@ -30,12 +30,12 @@ pipeline {
      stage('Build and push Docker Image') {
       steps{
         script {
-           //appimage = docker.build( "almitarosita/devops:${env.BUILD_ID}")
+           appimage = docker.build( "almitarosita/devops:${env.BUILD_ID}")
            //appimage = docker.build("gcr.io/vaulted-quarter-260801/devops:${env.BUILD_ID}")
            //docker.withRegistry("https://registry.hub.docker.com",'docker-hub-credentials') 
-           //docker.withRegistry('https://gcr.io','gcr:gcr'){
-           //   appimage.push("${env.BUILD_ID}")
-           //}
+           docker.withRegistry('https://gcr.io','gcr:gcr'){
+              appimage.push("${env.BUILD_ID}")
+           }
          }
        }
       }
@@ -45,7 +45,7 @@ pipeline {
        echo "Deploying to Kubernetes Cluster.."
        sh 'ls -ltr'
        sh 'pwd'
-      // sh "sed -i 's/tagversion/${env.BUILD_ID}/g' deployment.yaml"
+       sh "sed -i 's/tagversion/${env.BUILD_ID}/g' deployment.yaml"
        step([$class: 'KubernetesEngineBuilder', projectId: env.PROJECT_ID, clusterName: env.CLUSTER_NAME, location: env.LOCATION, manifestPattern: 'deployment.yaml', credentialsId: env.CREDENTIALS_ID, verifyDeployments: true])
        echo "Deployment to Kubernetes cluster completed.."
       }
