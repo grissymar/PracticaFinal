@@ -1,54 +1,52 @@
 pipeline {
- 
- agent any
- 
- environment {
-    PROJECT_ID = "mi-primer-jenkins-290214"
-    CLUSTER_NAME = 'kube-demo'
-    LOCATION = 'us-east1-d'
-    CREDENTIALS_ID = 'mi-primer-jenkins-290214'
-  }   
- stages {
-     stage('Checkout SCM') {
-      steps {
-       checkout scm
-      }
-     }
-    stage('Build package') {
-
-        steps {
-        echo "Cleaning and packing.."
-         sh 'mvn clean package'
-        }
+    agent any
+    environment {
+        DOCKER_IMAGE_NAME = "grissy/gradle-test"
     }
-     stage('Test') {
-      steps {
-       echo "Testing.."
-       sh 'mvn test'
-      }
-     }
-     stage('Build and push Docker Image') {
-      steps{
-        script {
-          // appimage = docker.build( "almitarosita/devops:${env.BUILD_ID}")
-           appimage = docker.build("gcr.io/vaulted-quarter-260801/devops:${env.BUILD_ID}")
-           docker.withRegistry("https://registry.hub.docker.com",'docker-hub-credentials') 
-           //docker.withRegistry('https://gcr.io','gcr:gcr'){
-              appimage.push("${env.BUILD_ID}")
-          // }
-         }
-       }
-      }
-    
-     stage('Deploy to Kubernetes') {
-      steps {
-       echo "Deploying to Kubernetes Cluster.."
-       sh 'ls -ltr'
-       sh 'pwd'
-       sh "sed -i 's/tagversion/${env.BUILD_ID}/g' deployment.yaml"
-       step([$class: 'KubernetesEngineBuilder', projectId: env.PROJECT_ID, clusterName: env.CLUSTER_NAME, location: env.LOCATION, manifestPattern: 'deployment.yaml', credentialsId: env.CREDENTIALS_ID, verifyDeployments: true])
-       echo "Deployment to Kubernetes cluster completed.."
-      }
-     }
+    stages {
+         stage('Build') {	
+             steps {	
+                echo 'Running build automation'	
+                sh 'chmod +x ./gradlew'	
+                sh './gradlew build --no-daemon'	
+            }	
+        }
+       
+        stage('Build Docker Image') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    app = docker.build(DOCKER_IMAGE_NAME)
+                }
+            }
+        }
+        stage('Push Docker Image') {
+            when {
+                branch 'master'
+            }
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker_hub_login') {
+                        app.push("${env.BUILD_NUMBER}")
+                        app.push("latest")
+                    }
+                }
+            }
+        }
+        stage('DeployToProduction') {
+            when {
+                branch 'master'
+            }
+            steps {
+                milestone(1)
+                kubernetesDeploy(
+                    kubeconfigId: 'kubeconfig',
+                    configs: 'k8s_svc_deploy.yaml',
+                    enableConfigSubstitution: true
+                )
+            }
+        }
     }
 }
