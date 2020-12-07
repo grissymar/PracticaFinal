@@ -1,52 +1,39 @@
 pipeline {
     agent any
     environment {
-        DOCKER_IMAGE_NAME = "grissy/gradle-test"
+	   PROJECT_ID = "mi-primer-jenkins-290214"
+       CLUSTER_NAME = 'kube-demo'
+       LOCATION = 'us-east1-d'
+       CREDENTIALS_ID = 'mi-primer-jenkins-290214'
     }
     stages {
-         stage('Build') {	
-             steps {	
-                echo 'Running build automation'	
-                sh 'chmod +x ./gradlew'	
-                sh './gradlew build --no-daemon'	
-            }	
-        }
-       
-        stage('Build Docker Image') {
-            when {
-                branch 'master'
+        stage("Checkout code") {
+            steps {
+                checkout scm
             }
+        }
+        stage("Build image") {
             steps {
                 script {
-                    app = docker.build(DOCKER_IMAGE_NAME)
+                    myapp = docker.build("grissy/hello:${env.BUILD_ID}")
                 }
             }
         }
-        stage('Push Docker Image') {
-            when {
-                branch 'master'
-            }
+        stage("Push image") {
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker_hub_login') {
-                        app.push("${env.BUILD_NUMBER}")
-                        app.push("latest")
+                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
+                            myapp.push("latest")
+                            myapp.push("${env.BUILD_ID}")
                     }
                 }
             }
-        }
-        stage('DeployToProduction') {
-            when {
-                branch 'master'
-            }
-            steps {
-                milestone(1)
-                kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig',
-                    configs: 'k8s_svc_deploy.yaml',
-                    enableConfigSubstitution: true
-                )
+        }        
+        stage('Deploy to GKE') {
+            steps{
+                sh "sed -i 's/hello:latest/hello:${env.BUILD_ID}/g' deployment.yaml"
+                step([$class: 'KubernetesEngineBuilder', projectId: env.PROJECT_ID, clusterName: env.CLUSTER_NAME, location: env.LOCATION, manifestPattern: 'deployment.yaml', credentialsId: env.CREDENTIALS_ID, verifyDeployments: true])
             }
         }
-    }
+    }    
 }
