@@ -35,7 +35,7 @@ pipeline {
            docker.withRegistry("https://registry.hub.docker.com",'docker-hub-credentials') 
            //docker.withRegistry('https://gcr.io','gcr:gcr'){
               appimage.push("${env.BUILD_ID}")
-           }
+          // }
          }
        }
       }
