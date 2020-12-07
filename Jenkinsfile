@@ -28,7 +28,7 @@ pipeline {
             }
             steps {
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'dockerhub') {
+                    docker.withRegistry('https://gcr.io','gcr:dockerhub') {
                         app.push("${env.BUILD_NUMBER}")
                         app.push("latest")
                     }
